@@ -1,6 +1,6 @@
 select
-    e.first_name || ' ' || e.last_name AS seller,
-    TRIM(TO_CHAR(s.sale_date,'day')) AS day_of_week,
+    e.first_name || ' ' || e.last_name as seller,
+    TRIM(TO_CHAR(s.sale_date,'day')) as day_of_week,
     FLOOR(SUM(p.price * s.quantity)) as income
 from sales s
 join employees e ON s.sales_person_id = e.employee_id
@@ -15,45 +15,43 @@ order by
     EXTRACT(ISODOW FROM s.sale_date),
     seller ASC;
 
-
-  WITH first_sale_dates AS (
-  SELECT
+WITH first_sale_dates AS (
+select
     s.customer_id,
     MIN(s.sale_date::date) AS first_sale_date
-  FROM sales s
-  JOIN products p ON s.product_id = p.product_id
-  WHERE p.price = 0
-    AND s.sale_date IS NOT NULL
-  GROUP BY s.customer_id
+from sales s
+JOIN products p ON s.product_id = p.product_id
+where p.price = 0
+and s.sale_date IS NOT NULL
+group by s.customer_id
 ),
 first_sales AS (
-  SELECT DISTINCT ON (fsd.customer_id)
+select DISTINCT ON (fsd.customer_id)
     fsd.customer_id,
     fsd.first_sale_date,
     s.sales_person_id
-  FROM first_sale_dates fsd
-  JOIN sales s ON
-    fsd.customer_id = s.customer_id AND
-    fsd.first_sale_date = s.sale_date::date
-  ORDER BY fsd.customer_id, s.sales_id
+from first_sale_dates fsd
+JOIN sales s on fsd.customer_id = s.customer_id 
+and fsd.first_sale_date = s.sale_date::date
+order by fsd.customer_id, s.sales_id
 )
-SELECT
-  CONCAT(c.first_name, ' ', c.last_name) AS customer,
-  fs.first_sale_date AS sale_date,
-  CONCAT(e.first_name, ' ', e.last_name) AS seller
-FROM first_sales fs
+select
+     CONCAT(c.first_name, ' ', c.last_name) AS customer,
+     fs.first_sale_date AS sale_date,
+     CONCAT(e.first_name, ' ', e.last_name) AS seller
+from first_sales fs
 JOIN customers c ON fs.customer_id = c.customer_id
 JOIN employees e ON fs.sales_person_id = e.employee_id
-ORDER BY c.customer_id;
+order by c.customer_id;
 
 select COUNT(distinct customer_id) as customer_count 
 from customers;
 
 select 
 case 
-	when age between 16 and 25 then '16-25'
-	when age between 26 and 40 then '26-40'
-	when age >= 41 then '40+'
+when age between 16 and 25 then '16-25'
+when age between 26 and 40 then '26-40'
+when age >= 41 then '40+'
 end as age_category,
 COUNT(*) as age_count 
 from customers 
@@ -71,41 +69,41 @@ join products p on s.product_id=p.product_id
 group by TO_CHAR(s.sale_date, 'YYYY-MM') 
 order by selling_month asc;
 
-SELECT
+select
     CONCAT(e.first_name, ' ', e.last_name) AS seller,
     COUNT(s.sales_id) AS operations,
     TRUNC(SUM(s.quantity * p.price))::BIGINT AS income
-FROM sales s
+from sales s
 JOIN employees e ON s.sales_person_id = e.employee_id
 JOIN products p ON s.product_id = p.product_id
-GROUP BY e.employee_id, e.first_name, e.last_name
-ORDER BY income DESC
+group by e.employee_id, e.first_name, e.last_name
+order by income DESC
 LIMIT 10;
 
 WITH
   sales_revenue AS (
-    SELECT s.sales_person_id, p.price * s.quantity AS deal_revenue
-    FROM sales s
-    JOIN products p ON s.product_id = p.product_id
+select s.sales_person_id, p.price * s.quantity AS deal_revenue
+from sales s
+JOIN products p ON s.product_id = p.product_id
   ),
   seller_avg AS (
-    SELECT
+select
       e.employee_id,
       CONCAT(e.first_name, ' ', e.last_name) AS seller,
       FLOOR(AVG(sr.deal_revenue)) AS average_income
-    FROM employees e
-    JOIN sales_revenue sr ON e.employee_id = sr.sales_person_id
-    GROUP BY e.employee_id, e.first_name, e.last_name
+from employees e
+JOIN sales_revenue sr ON e.employee_id = sr.sales_person_id
+group by e.employee_id, e.first_name, e.last_name
   ),
   global_avg AS (
-    SELECT FLOOR(AVG(deal_revenue)) AS avg_all
-    FROM sales_revenue
+select FLOOR(AVG(deal_revenue)) AS avg_all
+from sales_revenue
   )
-SELECT sa.seller, sa.average_income
-FROM seller_avg sa
+select sa.seller, sa.average_income
+from seller_avg sa
 CROSS JOIN global_avg ga
-WHERE sa.average_income < ga.avg_all
-ORDER BY sa.average_income asc;
+where sa.average_income < ga.avg_all
+order by sa.average_income asc;
 
 
 
